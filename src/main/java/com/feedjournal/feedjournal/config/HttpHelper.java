@@ -22,7 +22,7 @@ public class HttpHelper {
     public HttpHelper() {
         this.httpClient = HttpClient.newBuilder()
                 .version(HttpClient.Version.HTTP_2)
-                .connectTimeout(Duration.ofSeconds(20))
+                .connectTimeout(Duration.ofSeconds(30))
                 .build();
     }
 
