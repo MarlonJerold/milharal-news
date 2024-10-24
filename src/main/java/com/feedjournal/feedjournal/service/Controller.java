@@ -22,30 +22,32 @@ public class Controller {
     public Controller(HttpHelper httpHelper) {
         this.httpHelper = httpHelper;
     }
-
     @GetMapping
     public List<FeedItem> getFeed() throws IOException, InterruptedException {
-        List<FeedItem> feedItems = new ArrayList<>() ;
+        List<String> feedIds = Arrays.asList(
+                "at://did:plc:mup34dteco2xkrzq4xxkkz7h/app.bsky.feed.generator/aaak3fykvnfik",
+                "at://did:plc:st5jaaeijn273nmlg56wuktw/app.bsky.feed.generator/aaapf55qisvwa"
+        );
 
-        String FeedUrl = "https://public.api.bsky.app/xrpc/app.bsky.feed.getFeed";
-        String FeedId = "at://did:plc:mup34dteco2xkrzq4xxkkz7h/app.bsky.feed.generator/aaak3fykvnfik";
-        String Cursor = "";
+        List<FeedItem> feedItems = new ArrayList<>();
+        String feedUrl = "https://public.api.bsky.app/xrpc/app.bsky.feed.getFeed";
 
-        Map<String, String> queryParams = new HashMap<>();
-        queryParams.put("feed", FeedId);
+        for (String feedId : feedIds) {
+            Map<String, String> queryParams = new HashMap<>();
+            queryParams.put("feed", feedId);
 
-        String response = httpHelper.get(FeedUrl, queryParams, null);
+            String response = httpHelper.get(feedUrl, queryParams, null);
+            ObjectMapper mapper = new ObjectMapper();
+            Feed feed = mapper.readValue(response, Feed.class);
 
-        ObjectMapper mapper = new ObjectMapper();
-        Feed feed = mapper.readValue(response, Feed.class);
-
-        feedItems.addAll(feed.getFeedItems());
-
-        while (feed.cursor != null) {
-            queryParams.put("cursor", feed.cursor);
-            response = httpHelper.get(FeedUrl, queryParams, null);
-            feed = mapper.readValue(response, Feed.class);
             feedItems.addAll(feed.getFeedItems());
+
+            while (feed.cursor != null) {
+                queryParams.put("cursor", feed.cursor);
+                response = httpHelper.get(feedUrl, queryParams, null);
+                feed = mapper.readValue(response, Feed.class);
+                feedItems.addAll(feed.getFeedItems());
+            }
         }
 
         return feedItems;
@@ -59,7 +61,7 @@ public class Controller {
                 .map(FeedItem::getPost)
                 .filter(Objects::nonNull)
                 .sorted(Comparator.comparingDouble(Post::calculateRelevance).reversed())
-                .limit(7)
+                .limit(20)
                 .collect(Collectors.toList());
     }
 
