@@ -25,7 +25,7 @@ public class Controller {
         this.httpHelper = httpHelper;
     }
     @GetMapping
-    public List<FeedItem> getFeed() throws IOException, InterruptedException {
+    public List<FeedItem> getFeed() {
         List<String> feedIds = Arrays.asList(
                 "at://did:plc:mup34dteco2xkrzq4xxkkz7h/app.bsky.feed.generator/aaak3fykvnfik",
                 "at://did:plc:st5jaaeijn273nmlg56wuktw/app.bsky.feed.generator/aaapf55qisvwa"
@@ -38,17 +38,21 @@ public class Controller {
             Map<String, String> queryParams = new HashMap<>();
             queryParams.put("feed", feedId);
 
-            String response = httpHelper.get(feedUrl, queryParams, null);
-            ObjectMapper mapper = new ObjectMapper();
-            Feed feed = mapper.readValue(response, Feed.class);
+            try {
+                String response = httpHelper.get(feedUrl, queryParams, null);
+                ObjectMapper mapper = new ObjectMapper();
+                Feed feed = mapper.readValue(response, Feed.class);
 
-            feedItems.addAll(feed.getFeedItems());
-
-            while (feed.cursor != null) {
-                queryParams.put("cursor", feed.cursor);
-                response = httpHelper.get(feedUrl, queryParams, null);
-                feed = mapper.readValue(response, Feed.class);
                 feedItems.addAll(feed.getFeedItems());
+
+                while (feed.cursor != null) {
+                    queryParams.put("cursor", feed.cursor);
+                    response = httpHelper.get(feedUrl, queryParams, null);
+                    feed = mapper.readValue(response, Feed.class);
+                    feedItems.addAll(feed.getFeedItems());
+                }
+            } catch (IOException | InterruptedException e) {
+                System.err.println("Erro ao obter o feed para o feedId " + feedId + ": " + e.getMessage());
             }
         }
 
@@ -57,8 +61,14 @@ public class Controller {
 
     @CircuitBreaker(name = "backendService", fallbackMethod = "fallbackMethod")
     @GetMapping("/RelevantPosts")
-    public List<Post> getTopRelevantPosts() throws IOException, InterruptedException {
-        List<FeedItem> feedItems = getFeed();
+    public List<Post> getTopRelevantPosts() {
+        List<FeedItem> feedItems;
+
+        try {
+            feedItems = getFeed();
+        } catch (Exception e) {
+            return fallbackMethod(e);
+        }
 
         return feedItems.stream()
                 .map(FeedItem::getPost)
