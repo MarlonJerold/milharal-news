@@ -5,6 +5,8 @@ import com.feedjournal.feedjournal.model.Feed;
 import com.feedjournal.feedjournal.model.FeedItem;
 import com.feedjournal.feedjournal.config.HttpHelper;
 import com.feedjournal.feedjournal.model.Post;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -53,7 +55,8 @@ public class Controller {
         return feedItems;
     }
 
-    @GetMapping("/RelevantPotopsts")
+    @CircuitBreaker(name = "backendService", fallbackMethod = "fallbackMethod")
+    @GetMapping("/RelevantPosts")
     public List<Post> getTopRelevantPosts() throws IOException, InterruptedException {
         List<FeedItem> feedItems = getFeed();
 
@@ -63,6 +66,11 @@ public class Controller {
                 .sorted(Comparator.comparingDouble(Post::calculateRelevance).reversed())
                 .limit(20)
                 .collect(Collectors.toList());
+    }
+
+    public List<Post> fallbackMethod(Throwable t) {
+        System.err.println("Circuit Breaker acionado: " + t.getMessage());
+        return Collections.emptyList();
     }
 
 }
