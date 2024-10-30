@@ -7,6 +7,7 @@ import com.feedjournal.feedjournal.config.HttpHelper;
 import com.feedjournal.feedjournal.model.Post;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -24,7 +25,9 @@ public class Controller {
     public Controller(HttpHelper httpHelper) {
         this.httpHelper = httpHelper;
     }
+
     @GetMapping
+    @Cacheable(value = "feed_cache", key = "'feedItems'")
     public List<FeedItem> getFeed() {
         List<String> feedIds = Arrays.asList(
                 "at://did:plc:mup34dteco2xkrzq4xxkkz7h/app.bsky.feed.generator/aaak3fykvnfik",
