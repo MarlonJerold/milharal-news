@@ -31,7 +31,7 @@ public class Controller {
     public List<FeedItem> getFeed() {
         List<String> feedIds = Arrays.asList(
                 "at://did:plc:mup34dteco2xkrzq4xxkkz7h/app.bsky.feed.generator/aaak3fykvnfik",
-                "at://did:plc:st5jaaeijn273nmlg56wuktw/app.bsky.feed.generator/aaapf55qisvwa",
+                "at://did:plc:st5jaaeijn273nmlg56wuktw/app.bsky.feed.generator/aaapf55qisvwa"
         );
 
         String feedUrl = "https://public.api.bsky.app/xrpc/app.bsky.feed.getFeed";
