@@ -32,8 +32,6 @@ public class Controller {
         List<String> feedIds = Arrays.asList(
                 "at://did:plc:mup34dteco2xkrzq4xxkkz7h/app.bsky.feed.generator/aaak3fykvnfik",
                 "at://did:plc:st5jaaeijn273nmlg56wuktw/app.bsky.feed.generator/aaapf55qisvwa",
-                "at://did:plc:qhogieoig2enwjkueb72gkx2/app.bsky.feed.generator/aaajslbmkn2ey",
-                "at://did:plc:5nziwmxwuvktjvomecqgziuw/app.bsky.feed.generator/aaamdh7l52isi"
         );
 
         String feedUrl = "https://public.api.bsky.app/xrpc/app.bsky.feed.getFeed";
@@ -88,7 +86,7 @@ public class Controller {
                 .map(FeedItem::getPost)
                 .filter(Objects::nonNull)
                 .sorted(Comparator.comparingDouble(Post::calculateRelevance).reversed())
-                .limit(25)
+                .limit(50)
                 .collect(Collectors.toList());
     }
 
