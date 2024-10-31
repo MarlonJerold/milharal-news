@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 @RestController
@@ -27,63 +28,68 @@ public class Controller {
     }
 
     @GetMapping
-    @Cacheable(value = "feed_cache", key = "'feedItems'")
     public List<FeedItem> getFeed() {
         List<String> feedIds = Arrays.asList(
                 "at://did:plc:mup34dteco2xkrzq4xxkkz7h/app.bsky.feed.generator/aaak3fykvnfik",
-                "at://did:plc:st5jaaeijn273nmlg56wuktw/app.bsky.feed.generator/aaapf55qisvwa"
+                "at://did:plc:st5jaaeijn273nmlg56wuktw/app.bsky.feed.generator/aaapf55qisvwa",
+                "at://did:plc:qhogieoig2enwjkueb72gkx2/app.bsky.feed.generator/aaajslbmkn2ey",
+                "at://did:plc:5nziwmxwuvktjvomecqgziuw/app.bsky.feed.generator/aaamdh7l52isi"
         );
 
-        List<FeedItem> feedItems = new ArrayList<>();
         String feedUrl = "https://public.api.bsky.app/xrpc/app.bsky.feed.getFeed";
 
-        for (String feedId : feedIds) {
-            Map<String, String> queryParams = new HashMap<>();
-            queryParams.put("feed", feedId);
+        List<CompletableFuture<List<FeedItem>>> futures = feedIds.stream()
+                .map(feedId -> CompletableFuture.supplyAsync(() -> {
+                    List<FeedItem> feedItems = new ArrayList<>();
+                    Map<String, String> queryParams = new HashMap<>();
+                    queryParams.put("feed", feedId);
 
-            try {
-                String response = httpHelper.get(feedUrl, queryParams, null);
-                ObjectMapper mapper = new ObjectMapper();
-                Feed feed = mapper.readValue(response, Feed.class);
+                    int attempts = 0;
 
-                feedItems.addAll(feed.getFeedItems());
+                    while (attempts < 3) {
+                        try {
+                            ObjectMapper mapper = new ObjectMapper();
+                            String response = httpHelper.get(feedUrl, queryParams, null);
+                            Feed feed = mapper.readValue(response, Feed.class);
+                            feedItems.addAll(feed.getFeedItems());
 
-                while (feed.cursor != null) {
-                    queryParams.put("cursor", feed.cursor);
-                    response = httpHelper.get(feedUrl, queryParams, null);
-                    feed = mapper.readValue(response, Feed.class);
-                    feedItems.addAll(feed.getFeedItems());
-                }
-            } catch (IOException | InterruptedException e) {
-                System.err.println("Erro ao obter o feed para o feedId " + feedId + ": " + e.getMessage());
-            }
-        }
+                            while (feed.cursor != null) {
+                                queryParams.put("cursor", feed.cursor);
+                                response = httpHelper.get(feedUrl, queryParams, null);
+                                feed = mapper.readValue(response, Feed.class);
+                                feedItems.addAll(feed.getFeedItems());
+                            }
+                            break;
+                        } catch (IOException | InterruptedException e) {
+                            System.err.println("Erro ao obter o feed para o feedId " + feedId + ": " + e.getMessage());
+                            attempts++;
+                            if (attempts >= 3) {
+                                System.err.println("Número máximo de tentativas atingido para feedId: " + feedId);
+                            }
+                        }
+                    }
+                    return feedItems;
+                }))
+                .collect(Collectors.toList());
+
+        List<FeedItem> feedItems = futures.stream()
+                .flatMap(future -> future.join().stream())
+                .collect(Collectors.toList());
 
         return feedItems;
     }
 
-    @CircuitBreaker(name = "backendService", fallbackMethod = "fallbackMethod")
     @GetMapping("/RelevantPosts")
+    @Cacheable(value = "getTopRelevantPosts", key = "'postItems'")
     public List<Post> getTopRelevantPosts() {
-        List<FeedItem> feedItems;
-
-        try {
-            feedItems = getFeed();
-        } catch (Exception e) {
-            return fallbackMethod(e);
-        }
+        List<FeedItem> feedItems = getFeed();
 
         return feedItems.stream()
                 .map(FeedItem::getPost)
                 .filter(Objects::nonNull)
                 .sorted(Comparator.comparingDouble(Post::calculateRelevance).reversed())
-                .limit(20)
+                .limit(25)
                 .collect(Collectors.toList());
-    }
-
-    public List<Post> fallbackMethod(Throwable t) {
-        System.err.println("Circuit Breaker acionado: " + t.getMessage());
-        return Collections.emptyList();
     }
 
 }
