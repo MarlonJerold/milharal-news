@@ -23,7 +23,7 @@ public class WebConfig implements WebMvcConfigurer {
 
     @Bean
     public Caffeine caffeineConfig() {
-        return Caffeine.newBuilder().expireAfterWrite(60, TimeUnit.MINUTES);
+        return Caffeine.newBuilder().expireAfterWrite(1, TimeUnit.HOURS);
     }
 
     @Bean
