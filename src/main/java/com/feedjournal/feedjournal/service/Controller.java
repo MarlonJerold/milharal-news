@@ -90,4 +90,20 @@ public class Controller {
                 .collect(Collectors.toList());
     }
 
+    @GetMapping("/opportunity")
+    public List<Post> getOpportunity() {
+        List<FeedItem> feedItems = getFeed();
+
+        List<String> termosFiltragem = Arrays.asList("vagas", "vaga", "oportunidade de emprego", "estamos contratando", "contratamos","vaga afirmativa") ;
+
+        return feedItems.stream()
+                .map(FeedItem::getPost)
+                .filter(Objects::nonNull)
+                .filter(post -> termosFiltragem.stream().anyMatch(termo -> {
+                    String texto = post.getText();
+                    return texto != null && texto.toLowerCase().contains(termo.toLowerCase());
+                }))
+                .collect(Collectors.toList());
+    }
+
 }

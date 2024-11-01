@@ -51,6 +51,10 @@ public class Post {
         return likeScore + repostScore + replyScore + quoteScore;
     }
 
+    public String getText() {
+        return record != null ? record.text : null;
+    }
+
     public Author getAuthor() {
         return author;
     }
