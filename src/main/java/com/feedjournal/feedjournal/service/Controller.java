@@ -5,8 +5,8 @@ import com.feedjournal.feedjournal.model.Feed;
 import com.feedjournal.feedjournal.model.FeedItem;
 import com.feedjournal.feedjournal.config.HttpHelper;
 import com.feedjournal.feedjournal.model.Post;
-import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
-import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import java.util.regex.Pattern;
+import java.util.regex.Matcher;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -94,7 +94,8 @@ public class Controller {
     public List<Post> getOpportunity() {
         List<FeedItem> feedItems = getFeed();
 
-        List<String> filterTerm = Arrays.asList("vagas", "vaga", "oportunidade de emprego", "estamos contratando", "contratamos", "contratando", "manda o currículo", "manda o curriculo", "manda o cv");
+        String regex = "\\b(vagas|vaga|oportunidade de emprego|estamos contratando|contratamos|contratando|manda o currículo|manda o curriculo|manda o cv)\\b";
+        Pattern pattern = Pattern.compile(regex, Pattern.CASE_INSENSITIVE);
 
         return feedItems.stream()
                 .map(FeedItem::getPost)
@@ -103,9 +104,10 @@ public class Controller {
                     String text = post.getText();
                     if (text == null) return false;
 
-                    String finalText = text.toLowerCase().replaceAll("[^a-zA-Z0-9 ]", " ").trim();
+                    String finalText = text.toLowerCase().replaceAll("[^a-zA-Z0-9áéíóúãõ ]", " ").trim();
 
-                    return filterTerm.stream().anyMatch(term -> finalText.contains(term.toLowerCase()));
+                    Matcher matcher = pattern.matcher(finalText);
+                    return matcher.find();
                 })
                 .collect(Collectors.toList());
     }
