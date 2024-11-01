@@ -5,6 +5,13 @@ import com.feedjournal.feedjournal.model.Feed;
 import com.feedjournal.feedjournal.model.FeedItem;
 import com.feedjournal.feedjournal.config.HttpHelper;
 import com.feedjournal.feedjournal.model.Post;
+
+import java.net.URI;
+import java.net.URLEncoder;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.util.regex.Pattern;
 import java.util.regex.Matcher;
 import org.springframework.cache.annotation.Cacheable;
@@ -105,11 +112,39 @@ public class Controller {
                     if (text == null) return false;
 
                     String finalText = text.toLowerCase().replaceAll("[^a-zA-Z0-9áéíóúãõ ]", " ").trim();
-
                     Matcher matcher = pattern.matcher(finalText);
-                    return matcher.find();
+
+                    if (matcher.find()) {
+                        return isJobOpportunity(finalText);
+                    }
+                    return false;
                 })
                 .collect(Collectors.toList());
+    }
+
+    public boolean isJobOpportunity(String postText) {
+        try {
+            HttpClient client = HttpClient.newHttpClient();
+            ObjectMapper mapper = new ObjectMapper();
+
+            String encodedText = URLEncoder.encode(postText, StandardCharsets.UTF_8);
+
+            String url = "https://clientgemini.onrender.com/verify_opportunity?text=" + encodedText;
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(url))
+                    .header("Content-Type", "application/json")
+                    .GET()
+                    .build();
+
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+            Map<String, Object> responseBody = mapper.readValue(response.body(), Map.class);
+
+            return Boolean.TRUE.equals(responseBody.get("is_opportunity"));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
     }
 
 }
