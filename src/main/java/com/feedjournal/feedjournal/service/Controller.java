@@ -94,15 +94,19 @@ public class Controller {
     public List<Post> getOpportunity() {
         List<FeedItem> feedItems = getFeed();
 
-        List<String> termosFiltragem = Arrays.asList("vagas", "vaga", "oportunidade de emprego", "estamos contratando", "contratamos","vaga afirmativa") ;
+        List<String> filterTerm = Arrays.asList("vagas", "vaga", "oportunidade de emprego", "estamos contratando", "contratamos", "contratando", "manda o currículo", "manda o curriculo", "manda o cv");
 
         return feedItems.stream()
                 .map(FeedItem::getPost)
                 .filter(Objects::nonNull)
-                .filter(post -> termosFiltragem.stream().anyMatch(termo -> {
-                    String texto = post.getText();
-                    return texto != null && texto.toLowerCase().contains(termo.toLowerCase());
-                }))
+                .filter(post -> {
+                    String text = post.getText();
+                    if (text == null) return false;
+
+                    String finalText = text.toLowerCase().replaceAll("[^a-zA-Z0-9 ]", " ").trim();
+
+                    return filterTerm.stream().anyMatch(term -> finalText.contains(term.toLowerCase()));
+                })
                 .collect(Collectors.toList());
     }
 
