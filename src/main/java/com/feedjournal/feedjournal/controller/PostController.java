@@ -17,6 +17,11 @@ public class PostController {
         this.postService = postService;
     }
 
+    @GetMapping("/github")
+    public List<Post> getPostGithub() {
+        return postService.getPostGithub();
+    }
+
     @GetMapping()
     @Cacheable(value = "getTopRelevantPosts", key = "'postItems'")
     public List<Post> getTopRelevantPosts() {

@@ -74,6 +74,29 @@ public class PostService {
                 .collect(Collectors.toList());
     }
 
+    public List<Post> getPostGithub() {
+        String expression = "https?://[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&//=]*)|[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}";
+        Pattern pattern = Pattern.compile(expression, Pattern.CASE_INSENSITIVE);
+
+        return feedItems.stream()
+                .map(FeedItem::getPost)
+                .filter(Objects::nonNull)
+                .filter(post -> {
+                    String text = post.getText();
+                    if (text == null) return false;
+
+                    Matcher matcher = pattern.matcher(text);
+                    while (matcher.find()) {
+                        String url = matcher.group();
+                        if (url.contains("github.com")) {
+                            return true;
+                        }
+                    }
+                    return false;
+                })
+                .collect(Collectors.toList());
+    }
+
     public Boolean isPostRelatedToQueryTest(String postText, String queryType) {
         try {
 
