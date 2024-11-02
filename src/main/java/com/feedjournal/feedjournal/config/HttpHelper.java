@@ -48,27 +48,6 @@ public class HttpHelper {
         return response.body();
     }
 
-    public String post(String url, String body, Map<String, String> headers) throws IOException, InterruptedException {
-        HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
-                .POST(HttpRequest.BodyPublishers.ofString(body))
-                .uri(URI.create(url))
-                .timeout(Duration.ofSeconds(10));
-
-        // Add headers if provided
-        if (headers != null) {
-            headers.forEach(requestBuilder::header);
-        }
-
-        HttpRequest request = requestBuilder.build();
-        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-
-        if (response.statusCode() != 200) {
-            throw new IOException("Error: " + response.statusCode() + " - " + response.body());
-        }
-
-        return response.body();
-    }
-
     private String buildUrlWithParams(String url, Map<String, String> queryParams) {
         if (queryParams == null || queryParams.isEmpty()) {
             return url;
@@ -82,7 +61,4 @@ public class HttpHelper {
         return url + "?" + joiner.toString();
     }
 
-    public void printResponseHeaders(HttpHeaders headers) {
-        headers.map().forEach((k, v) -> System.out.println(k + ":" + v));
-    }
 }
