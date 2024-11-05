@@ -5,9 +5,13 @@ import com.feedjournal.feedjournal.config.HttpHelper;
 import com.feedjournal.feedjournal.model.FeedItem;
 import com.feedjournal.feedjournal.model.Post;
 import com.feedjournal.feedjournal.repository.PostRepository;
+import com.feedjournal.feedjournal.util.RegexUtil;
+import com.feedjournal.feedjournal.util.UrlPatternUtil;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -19,15 +23,80 @@ public class PostService {
 
     private final PostRepository postRepository;
     private final ObjectMapper objectMapper;
+    private final IAInteractionService iaInteractionService;
     private List<FeedItem> feedItems;
     private final HttpHelper httpHelper;
 
-    public PostService(FeedService feedService, PostRepository postRepository, HttpHelper httpHelper) {
+    public PostService(FeedService feedService, PostRepository postRepository, IAInteractionService iaInteractionService, HttpHelper httpHelper) {
         this.feedService = feedService;
         this.feedItems = feedService.getFeed();
         this.postRepository = postRepository;
+        this.iaInteractionService = iaInteractionService;
         this.httpHelper = httpHelper;
         this.objectMapper = new ObjectMapper();
+    }
+
+    public List<Post> getPostByMessage(String postText) {
+
+        Pattern pattern = generateKeywords(postText, 10);
+
+        List<Post> matchingPosts = new ArrayList<>();
+
+        for (FeedItem feedItem : feedItems) {
+            Post post = feedItem.getPost();
+            if (post != null && post.getText() != null && pattern.matcher(post.getText()).find()) {
+                matchingPosts.add(post);
+            }
+        }
+        return matchingPosts;
+    }
+
+    public Pattern generateKeywords(String postText, int numberOfGenerations) {
+        RegexUtil regexUtil = new RegexUtil(iaInteractionService);
+        Pattern initialPattern = regexUtil.createPatternFromKeyIA(postText, "keywords");
+        String regexString = initialPattern.pattern();
+
+        String text = "Quero que você pegue essas palavras: " + regexString +
+                " quero que sejam palavras chaves para treinar um algorítmo a respeito do gosto em espécifico de um usuário com base nessas perguntas, então imagine que seja um grafos com 2 camadas, uma palavra ligaria a outra, mesmo não sendo 100% de certeza de relação.";
+
+        Pattern lastGeneratedPattern = initialPattern;
+
+        for (int i = 0; i < numberOfGenerations; i++) {
+
+            lastGeneratedPattern = regexUtil.createPatternFromKeyIA(text, "keywords");
+
+            text += " adicionando mais variações com a geração " + (i + 1);
+        }
+
+        return lastGeneratedPattern;
+    }
+
+    public List<Post> getPostByMessages(String postText) {
+        List<Post> relevantPosts = getTopRelevantPosts();
+
+        try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+
+            List<Future<Post>> futures = relevantPosts.stream()
+                    .filter(Objects::nonNull)
+                    .map(post -> executor.submit(() -> {
+                        if (postText == null) return null;
+
+                        String finalText = postText.toLowerCase().replaceAll("[^a-zA-Z0-9áéíóúãõ ]", " ").trim();
+                        return iaInteractionService.isPostRelatedToQuery(finalText, "question") ? post : null;
+                    }))
+                    .collect(Collectors.toList());
+
+            return futures.stream()
+                    .map(future -> {
+                        try {
+                            return future.get();
+                        } catch (Exception e) {
+                            throw new RuntimeException("Failed to process post", e);
+                        }
+                    })
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList());
+        }
     }
 
     public List<Post> getOpportunity() {
@@ -50,7 +119,7 @@ public class PostService {
                     Matcher matcher = pattern.matcher(finalText);
 
                     if (matcher.find()) {
-                        Boolean isOpportunity = isPostRelatedToQueryTest(finalText, "is_opportunity");
+                        Boolean isOpportunity = iaInteractionService.isPostRelatedToQuery(finalText, "is_opportunity");
                         return isOpportunity ? post : null;
                     } else {
                         return null;
@@ -70,14 +139,11 @@ public class PostService {
                 .map(FeedItem::getPost)
                 .filter(Objects::nonNull)
                 .sorted(Comparator.comparingDouble(Post::calculateRelevance).reversed())
-                .limit(50)
+                .limit(100)
                 .collect(Collectors.toList());
     }
 
     public List<Post> getPostGithub() {
-        String expression = "https?://[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&//=]*)|[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}";
-        Pattern pattern = Pattern.compile(expression, Pattern.CASE_INSENSITIVE);
-
         return feedItems.stream()
                 .map(FeedItem::getPost)
                 .filter(Objects::nonNull)
@@ -85,7 +151,7 @@ public class PostService {
                     String text = post.getText();
                     if (text == null) return false;
 
-                    Matcher matcher = pattern.matcher(text);
+                    Matcher matcher = UrlPatternUtil.getUrlPattern().matcher(text);
                     while (matcher.find()) {
                         String url = matcher.group();
                         if (url.contains("github.com")) {
@@ -95,24 +161,5 @@ public class PostService {
                     return false;
                 })
                 .collect(Collectors.toList());
-    }
-
-    public Boolean isPostRelatedToQueryTest(String postText, String queryType) {
-        try {
-
-            String url = "https://clientgemini.onrender.com/" + queryType;
-
-            Map<String, String> queryParams = Map.of("text", postText);
-            Map<String, String> headers = Map.of("Content-Type", "application/json");
-
-            String request = httpHelper.get(url, queryParams, headers);
-
-            Map<String, Object> responseMap = objectMapper.readValue(request, Map.class);
-
-            return Boolean.TRUE.equals(responseMap.get(queryType));
-        } catch (Exception e) {
-            e.printStackTrace();
-            return false;
-        }
     }
 }

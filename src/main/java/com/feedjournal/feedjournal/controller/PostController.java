@@ -2,7 +2,7 @@ package com.feedjournal.feedjournal.controller;
 
 import com.feedjournal.feedjournal.model.Post;
 import com.feedjournal.feedjournal.service.PostService;
-import org.springframework.cache.annotation.Cacheable;
+
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -23,10 +23,14 @@ public class PostController {
     }
 
     @GetMapping()
-    @Cacheable(value = "getTopRelevantPosts", key = "'postItems'")
     public List<Post> getTopRelevantPosts() {
         List<Post> topRelevantPosts = postService.getTopRelevantPosts();
         return topRelevantPosts;
+    }
+
+    @GetMapping("/message")
+    public List<Post> getPostByMessage(@RequestParam String message) {
+        return postService.getPostByMessages(message);
     }
 
     @GetMapping("/opportunity")

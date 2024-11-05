@@ -8,7 +8,8 @@ import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
+
+import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
 @Service
@@ -28,13 +29,22 @@ public class FeedService {
 
         String feedUrl = "https://public.api.bsky.app/xrpc/app.bsky.feed.getFeed";
 
-        List<CompletableFuture<List<FeedItem>>> futures = feedIds.stream()
-                .map(feedId -> CompletableFuture.supplyAsync(() -> fetchFeedItems(feedUrl, feedId)))
-                .collect(Collectors.toList());
+        try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
 
-        return futures.stream()
-                .flatMap(future -> future.join().stream())
-                .collect(Collectors.toList());
+            var futures = feedIds.stream()
+                    .map(feedId -> executor.submit(() -> fetchFeedItems(feedUrl, feedId)))
+                    .collect(Collectors.toList());
+
+            return futures.stream()
+                    .flatMap(future -> {
+                        try {
+                            return future.get().stream();
+                        } catch (Exception e) {
+                            throw new RuntimeException("Failed to fetch feed items", e);
+                        }
+                    })
+                    .collect(Collectors.toList());
+        }
     }
 
     private List<FeedItem> fetchFeedItems(String feedUrl, String feedId) {
