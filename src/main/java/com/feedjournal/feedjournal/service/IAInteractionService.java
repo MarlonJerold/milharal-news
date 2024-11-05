@@ -2,6 +2,7 @@ package com.feedjournal.feedjournal.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.feedjournal.feedjournal.config.HttpHelper;
+import com.feedjournal.feedjournal.exception.CustomHttpException;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -25,8 +26,8 @@ public class IAInteractionService {
         try {
             Map<String, Object> responseMap = askQuestion(URLFromQueryType(queryType), postText);
             return (List<String>) responseMap.getOrDefault(queryType, List.of());
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (CustomHttpException e) {
+            Logger.getLogger(getClass().getName()).log(Level.SEVERE, e.getMessage());
             return List.of();
         }
     }
@@ -44,25 +45,19 @@ public class IAInteractionService {
         try {
             Map<String, Object> responseMap = askQuestion(URLFromQueryType(queryType), postText);
             return Boolean.TRUE.equals(responseMap.get(queryType));
-        } catch (IOException e) {
-            logger.log(Level.WARNING, "IO Exception occurred while asking question", e);
-            return false;
-        } catch (Exception e) {
-            logger.log(Level.SEVERE, "An unexpected error occurred", e);
+        } catch (CustomHttpException e) {
+            logger.log(Level.SEVERE, e.getMessage());
             return false;
         }
     }
 
-    public Map<String, Object> askQuestion(String url, String question) throws Exception {
+    public Map<String, Object> askQuestion(String url, String question) throws CustomHttpException {
         Logger logger = Logger.getLogger(getClass().getName());
         try {
             return httpHelper.getStringObjectMap(url, question);
-        } catch (IOException e) {
-            logger.log(Level.SEVERE, "Failed to retrieve data from URL: " + url, e);
-            throw new Exception("Error retrieving data from URL: " + url, e);
         } catch (Exception e) {
             logger.log(Level.SEVERE, "An unexpected error occurred while asking the question", e);
-            throw new Exception("Unexpected error while asking the question", e);
+            throw new CustomHttpException("Unexpected error while asking the question", e);
         }
     }
 }

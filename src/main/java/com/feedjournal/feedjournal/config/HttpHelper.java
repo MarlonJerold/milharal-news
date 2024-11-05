@@ -1,14 +1,15 @@
 package com.feedjournal.feedjournal.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.feedjournal.feedjournal.exception.CustomHttpException;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.net.URI;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Map;
@@ -30,8 +31,7 @@ public class HttpHelper {
                 .build();
     }
 
-
-    public Map<String, Object> getStringObjectMap(String url, String question) throws IOException, InterruptedException {
+    public Map<String, Object> getStringObjectMap(String url, String question) throws CustomHttpException {
         Logger logger = Logger.getLogger(getClass().getName());
 
         Map<String, String> queryParams = Map.of("text", question);
@@ -41,21 +41,15 @@ public class HttpHelper {
             String responseJson = get(url, queryParams, headers);
             return objectMapper.readValue(responseJson, Map.class);
         } catch (IOException e) {
-
             logger.log(Level.SEVERE, "Failed to retrieve or parse data from URL: " + url, e);
-            throw new IOException("Error retrieving or parsing data from URL: " + url, e);
-        } catch (InterruptedException e) {
-
-            logger.log(Level.WARNING, "Request interrupted while retrieving data from URL: " + url, e);
-            Thread.currentThread().interrupt();
-            throw new InterruptedException("Request interrupted while retrieving data from URL: " + url);
+            throw new CustomHttpException("Error retrieving or parsing data from URL: " + url, e);
         } catch (Exception e) {
             logger.log(Level.SEVERE, "An unexpected error occurred while getting data from the URL", e);
-            throw new RuntimeException("Unexpected error while getting data from the URL", e);
+            throw new CustomHttpException("Unexpected error while getting data from the URL", e);
         }
     }
 
-    public static String get(String url, Map<String, String> queryParams, Map<String, String> headers) throws IOException, InterruptedException {
+    public static String get(String url, Map<String, String> queryParams, Map<String, String> headers) throws CustomHttpException {
         Logger logger = Logger.getLogger(HttpHelper.class.getName());
         String fullUrl = buildUrlWithParams(url, queryParams);
 
@@ -76,19 +70,18 @@ public class HttpHelper {
             if (response.statusCode() != 200) {
                 String errorMsg = "Error: " + response.statusCode() + " - " + response.body();
                 logger.log(Level.SEVERE, errorMsg);
-                throw new IOException(errorMsg);
             }
             return response.body();
         } catch (IOException e) {
             logger.log(Level.SEVERE, "IOException occurred while sending GET request to URL: " + fullUrl);
-            throw new IOException("Failed to send GET request to URL: " + fullUrl);
+            throw new CustomHttpException("Failed to send GET request to URL: " + fullUrl, e);
         } catch (InterruptedException e) {
             logger.log(Level.WARNING, "GET request was interrupted");
             Thread.currentThread().interrupt();
-            throw new InterruptedException("GET request interrupted for URL: " + fullUrl);
+            throw new CustomHttpException("GET request interrupted for URL: " + fullUrl, e);
         } catch (Exception e) {
             logger.log(Level.SEVERE, "An unexpected error occurred while sending GET request");
-            throw new RuntimeException("Unexpected error while sending GET request to URL: " + fullUrl);
+            throw new CustomHttpException("Unexpected error while sending GET request to URL: " + fullUrl, e);
         }
     }
 
@@ -104,5 +97,4 @@ public class HttpHelper {
 
         return url + "?" + joiner.toString();
     }
-
 }

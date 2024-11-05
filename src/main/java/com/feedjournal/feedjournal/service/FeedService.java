@@ -1,6 +1,7 @@
 package com.feedjournal.feedjournal.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.feedjournal.feedjournal.exception.CustomHttpException;
 import com.feedjournal.feedjournal.model.Feed;
 import com.feedjournal.feedjournal.model.FeedItem;
 import com.feedjournal.feedjournal.config.HttpHelper;
@@ -68,12 +69,14 @@ public class FeedService {
                     feedItems.addAll(feed.getFeedItems());
                 }
                 break;
-            } catch (IOException | InterruptedException e) {
+            } catch (IOException e) {
                 System.err.println("Erro ao obter o feed para o feedId " + feedId + ": " + e.getMessage());
                 attempts++;
                 if (attempts >= 3) {
                     System.err.println("Número máximo de tentativas atingido para feedId: " + feedId);
                 }
+            } catch (CustomHttpException e) {
+                throw new RuntimeException(e);
             }
         }
         return feedItems;
