@@ -30,7 +30,7 @@ public class PostController {
 
     @GetMapping("/message")
     public List<Post> getPostByMessage(@RequestParam String message) {
-        return postService.getPostByMessages(message);
+        return postService.getPostByMessage(message);
     }
 
     @GetMapping("/opportunity")
