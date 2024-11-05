@@ -74,22 +74,21 @@ public class HttpHelper {
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() != 200) {
-
                 String errorMsg = "Error: " + response.statusCode() + " - " + response.body();
                 logger.log(Level.SEVERE, errorMsg);
                 throw new IOException(errorMsg);
             }
             return response.body();
         } catch (IOException e) {
-            logger.log(Level.SEVERE, "IOException occurred while sending GET request to URL: " + fullUrl, e);
-            throw new IOException("IOException while sending GET request to URL: " + fullUrl, e);
+            logger.log(Level.SEVERE, "IOException occurred while sending GET request to URL: " + fullUrl);
+            throw new IOException("Failed to send GET request to URL: " + fullUrl);
         } catch (InterruptedException e) {
-            logger.log(Level.WARNING, "GET request was interrupted", e);
+            logger.log(Level.WARNING, "GET request was interrupted");
             Thread.currentThread().interrupt();
             throw new InterruptedException("GET request interrupted for URL: " + fullUrl);
         } catch (Exception e) {
-            logger.log(Level.SEVERE, "An unexpected error occurred while sending GET request", e);
-            throw new RuntimeException("Unexpected error while sending GET request to URL: " + fullUrl, e);
+            logger.log(Level.SEVERE, "An unexpected error occurred while sending GET request");
+            throw new RuntimeException("Unexpected error while sending GET request to URL: " + fullUrl);
         }
     }
 
