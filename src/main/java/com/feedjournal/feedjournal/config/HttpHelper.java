@@ -13,6 +13,8 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Map;
 import java.util.StringJoiner;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 @Service
 public class HttpHelper {
@@ -30,15 +32,31 @@ public class HttpHelper {
 
 
     public Map<String, Object> getStringObjectMap(String url, String question) throws IOException, InterruptedException {
+        Logger logger = Logger.getLogger(getClass().getName());
+
         Map<String, String> queryParams = Map.of("text", question);
         Map<String, String> headers = Map.of("Content-Type", "application/json");
 
-        String responseJson = get(url, queryParams, headers);
+        try {
+            String responseJson = get(url, queryParams, headers);
+            return objectMapper.readValue(responseJson, Map.class);
+        } catch (IOException e) {
 
-        return objectMapper.readValue(responseJson, Map.class);
+            logger.log(Level.SEVERE, "Failed to retrieve or parse data from URL: " + url, e);
+            throw new IOException("Error retrieving or parsing data from URL: " + url, e);
+        } catch (InterruptedException e) {
+
+            logger.log(Level.WARNING, "Request interrupted while retrieving data from URL: " + url, e);
+            Thread.currentThread().interrupt();
+            throw new InterruptedException("Request interrupted while retrieving data from URL: " + url);
+        } catch (Exception e) {
+            logger.log(Level.SEVERE, "An unexpected error occurred while getting data from the URL", e);
+            throw new RuntimeException("Unexpected error while getting data from the URL", e);
+        }
     }
 
     public static String get(String url, Map<String, String> queryParams, Map<String, String> headers) throws IOException, InterruptedException {
+        Logger logger = Logger.getLogger(HttpHelper.class.getName());
         String fullUrl = buildUrlWithParams(url, queryParams);
 
         HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
@@ -51,13 +69,28 @@ public class HttpHelper {
         }
 
         HttpRequest request = requestBuilder.build();
-        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
-        if (response.statusCode() != 200) {
-            throw new IOException("Error: " + response.statusCode() + " - " + response.body());
+        try {
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() != 200) {
+
+                String errorMsg = "Error: " + response.statusCode() + " - " + response.body();
+                logger.log(Level.SEVERE, errorMsg);
+                throw new IOException(errorMsg);
+            }
+            return response.body();
+        } catch (IOException e) {
+            logger.log(Level.SEVERE, "IOException occurred while sending GET request to URL: " + fullUrl, e);
+            throw new IOException("IOException while sending GET request to URL: " + fullUrl, e);
+        } catch (InterruptedException e) {
+            logger.log(Level.WARNING, "GET request was interrupted", e);
+            Thread.currentThread().interrupt();
+            throw new InterruptedException("GET request interrupted for URL: " + fullUrl);
+        } catch (Exception e) {
+            logger.log(Level.SEVERE, "An unexpected error occurred while sending GET request", e);
+            throw new RuntimeException("Unexpected error while sending GET request to URL: " + fullUrl, e);
         }
-
-        return response.body();
     }
 
     private static String buildUrlWithParams(String url, Map<String, String> queryParams) {

@@ -54,7 +54,15 @@ public class IAInteractionService {
     }
 
     public Map<String, Object> askQuestion(String url, String question) throws Exception {
-        return httpHelper.getStringObjectMap(url, question);
+        Logger logger = Logger.getLogger(getClass().getName());
+        try {
+            return httpHelper.getStringObjectMap(url, question);
+        } catch (IOException e) {
+            logger.log(Level.SEVERE, "Failed to retrieve data from URL: " + url, e);
+            throw new Exception("Error retrieving data from URL: " + url, e);
+        } catch (Exception e) {
+            logger.log(Level.SEVERE, "An unexpected error occurred while asking the question", e);
+            throw new Exception("Unexpected error while asking the question", e);
+        }
     }
-
 }
