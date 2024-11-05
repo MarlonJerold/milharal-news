@@ -22,6 +22,7 @@ public class IAInteractionService {
     public List<String> generateStringListFromQueryTypeIA(String postText, String queryType) {
         try {
             Map<String, Object> responseMap = askQuestion(URLFromQueryType(queryType), postText);
+            System.out.println(responseMap);
             return (List<String>) responseMap.getOrDefault(queryType, List.of());
         } catch (Exception e) {
             e.printStackTrace();
@@ -33,38 +34,19 @@ public class IAInteractionService {
         if (queryType == null || queryType.isEmpty()) {
             throw new IllegalArgumentException("queryType must not be null or empty");
         }
-        return "https://clientgemini.onrender.com" + queryType;
+        return "https://clientgemini.onrender.com/" + queryType;
     }
 
     public Boolean isPostRelatedToQuery(String postText, String queryType) {
-        final int MAX_RETRIES = 5;
-        final int INITIAL_DELAY_MS = 2000;
+        try {
 
-        for (int attempt = 0; attempt < MAX_RETRIES; attempt++) {
-            try {
-                Map<String, Object> responseMap = askQuestion(URLFromQueryType(queryType), postText);
-                return Boolean.TRUE.equals(responseMap.get(queryType));
-            } catch (IOException e) {
-                if (isQuotaExceeded(e)) {
-                    try {
-                        Thread.sleep(INITIAL_DELAY_MS * (1 << attempt));
-                    } catch (InterruptedException ie) {
-                        Thread.currentThread().interrupt();
-                    }
-                } else {
-                    e.printStackTrace();
-                    return false;
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-                return false;
-            }
+            Map<String, Object> responseMap = askQuestion(URLFromQueryType(queryType), postText);
+            return Boolean.TRUE.equals(responseMap.get(queryType));
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
         }
-        return false;
-    }
-
-    private boolean isQuotaExceeded(IOException e) {
-        return e.getMessage() != null && e.getMessage().contains("429");
     }
 
     public Map<String, Object> askQuestion(String url, String question) throws Exception {
