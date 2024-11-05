@@ -22,7 +22,6 @@ public class IAInteractionService {
     public List<String> generateStringListFromQueryTypeIA(String postText, String queryType) {
         try {
             Map<String, Object> responseMap = askQuestion(URLFromQueryType(queryType), postText);
-            System.out.println(responseMap);
             return (List<String>) responseMap.getOrDefault(queryType, List.of());
         } catch (Exception e) {
             e.printStackTrace();
