@@ -7,6 +7,8 @@ import org.springframework.stereotype.Service;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 @Service
 public class IAInteractionService {
@@ -37,13 +39,16 @@ public class IAInteractionService {
     }
 
     public Boolean isPostRelatedToQuery(String postText, String queryType) {
-        try {
+        Logger logger = Logger.getLogger(getClass().getName());
 
+        try {
             Map<String, Object> responseMap = askQuestion(URLFromQueryType(queryType), postText);
             return Boolean.TRUE.equals(responseMap.get(queryType));
-
+        } catch (IOException e) {
+            logger.log(Level.WARNING, "IO Exception occurred while asking question", e);
+            return false;
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.log(Level.SEVERE, "An unexpected error occurred", e);
             return false;
         }
     }

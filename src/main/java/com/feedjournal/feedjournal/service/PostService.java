@@ -12,6 +12,8 @@ import org.springframework.stereotype.Service;
 import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -73,6 +75,7 @@ public class PostService {
 
     public List<Post> getPostByMessages(String postText) {
         List<Post> relevantPosts = getTopRelevantPosts();
+        Logger logger = Logger.getLogger(getClass().getName());
 
         try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
 
@@ -90,8 +93,13 @@ public class PostService {
                     .map(future -> {
                         try {
                             return future.get();
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                            logger.log(Level.WARNING, "Task was interrupted", e);
+                            return null;
                         } catch (Exception e) {
-                            throw new RuntimeException("Failed to process post", e);
+                            logger.log(Level.SEVERE, "Failed to process post", e);
+                            return null;
                         }
                     })
                     .filter(Objects::nonNull)
